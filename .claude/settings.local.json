@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(poetry init:*)",
+      "Bash(poetry add:*)",
+      "Bash(poetry run python:*)",
+      "Bash(RESEND_API_KEY=test FROM_EMAIL=test@test.com poetry run python:*)"
+    ]
+  }
+}

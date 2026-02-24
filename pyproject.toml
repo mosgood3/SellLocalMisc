@@ -1,0 +1,19 @@
+[project]
+name = "misc-tools"
+version = "0.1.0"
+description = "CLI tools for managing The Brain Dump and SellLocal"
+authors = [
+    {name = "matth"}
+]
+requires-python = "^3.11"
+dependencies = [
+    "resend (>=2.22.0,<3.0.0)",
+    "supabase (>=2.0.0,<3.0.0)",
+    "requests (>=2.31.0,<3.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
