@@ -5,3 +5,4 @@ __pycache__/
 
 # Generated contact lists (fetched from Supabase at send time)
 emails/campaigns/expired-store/contacts.csv
+emails/campaigns/new-dashboard/contacts.csv
