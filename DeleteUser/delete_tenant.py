@@ -73,7 +73,6 @@ TABLES_TO_DELETE = [
     ("sell_local_products", "tenant_id", "direct"),
     # Settings & config
     ("sell_local_settings", "tenant_id", "direct"),
-    ("sell_local_store_settings", "tenant_id", "direct"),
     # Content & branding
     ("sell_local_affiliate_links", "tenant_id", "direct"),
     ("sell_local_social_links", "tenant_id", "direct"),
