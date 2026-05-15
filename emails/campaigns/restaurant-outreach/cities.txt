@@ -1,0 +1,39 @@
+# Target cities for restaurant outreach — round 2.
+# One per line. Lines starting with # are ignored.
+# Round 1 hit the obvious mid-size foodie cities. Round 2 targets
+# (a) college towns Round 1 missed and (b) coastal/vacation towns
+# where indie restaurant ownership is still strong.
+
+# College towns
+Lawrence, KS
+Gainesville, FL
+State College, PA
+Tucson, AZ
+Columbia, MO
+Knoxville, TN
+Tuscaloosa, AL
+Oxford, MS
+San Luis Obispo, CA
+Lincoln, NE
+Ames, IA
+Athens, OH
+Norman, OK
+Davis, CA
+Auburn, AL
+
+# Coastal / vacation towns
+Hyannis, MA
+Provincetown, MA
+Newport, RI
+Asbury Park, NJ
+Bar Harbor, ME
+Camden, ME
+Hilton Head Island, SC
+Key West, FL
+Sanibel, FL
+Naples, FL
+Carmel-by-the-Sea, CA
+Mendocino, CA
+Sausalito, CA
+Cannon Beach, OR
+Astoria, OR

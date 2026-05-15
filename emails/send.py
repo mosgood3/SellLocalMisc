@@ -19,6 +19,7 @@ from pathlib import Path
 
 import resend
 from dotenv import load_dotenv
+from supabase import create_client
 import os
 
 EMAILS_DIR = Path(__file__).resolve().parent
@@ -30,6 +31,51 @@ load_dotenv(MISC_ROOT / ".env")
 resend.api_key = os.getenv("RESEND_API_KEY")
 FROM_EMAIL = os.getenv("FROM_EMAIL")
 REPLY_TO = os.getenv("REPLY_TO")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY else None
+
+EMAIL_LOG_TABLE = "sell_local_platform_email_log"
+
+
+def load_already_sent(campaign: str) -> set[str]:
+    """Return the set of emails already successfully sent for this campaign."""
+    if not supabase:
+        return set()
+    sent: set[str] = set()
+    page_size = 1000
+    offset = 0
+    while True:
+        resp = (
+            supabase.table(EMAIL_LOG_TABLE)
+            .select("email")
+            .eq("campaign", campaign)
+            .eq("status", "sent")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = resp.data or []
+        sent.update(r["email"].lower() for r in rows if r.get("email"))
+        if len(rows) < page_size:
+            break
+        offset += page_size
+    return sent
+
+
+def log_send(campaign: str, email: str, status: str, error: str | None = None) -> None:
+    """Insert a row into the platform email log. Failures here shouldn't crash the send."""
+    if not supabase:
+        return
+    try:
+        supabase.table(EMAIL_LOG_TABLE).insert({
+            "email": email,
+            "campaign": campaign,
+            "status": status,
+            "error": error,
+        }).execute()
+    except Exception as e:
+        print(f"  WARNING: failed to log send for {email}: {e}")
 
 
 def list_campaigns() -> list[str]:
@@ -68,7 +114,7 @@ def load_template(template_path: Path) -> tuple[str, str]:
     return subject, html
 
 
-def send_campaign(campaign: str, delay: float = 0.5, dry_run: bool = False) -> None:
+def send_campaign(campaign: str, delay: float = 0.5, dry_run: bool = False, bcc: str | None = None) -> None:
     """Send emails for a campaign."""
     if not resend.api_key:
         print("Error: RESEND_API_KEY is not set in .env")
@@ -108,26 +154,37 @@ def send_campaign(campaign: str, delay: float = 0.5, dry_run: bool = False) -> N
     # Detect placeholders used in the template
     placeholders = set(re.findall(r"\{\{(\w+)\}\}", html_template))
 
+    already_sent = load_already_sent(campaign)
+
     print(f"Campaign:  {campaign}")
     print(f"Subject:   {subject}")
     print(f"Contacts:  {len(contacts)}")
+    print(f"Already sent (skipped): {len(already_sent & {c['email'].lower() for c in contacts})}")
     if placeholders:
         print(f"Variables: {', '.join(sorted(placeholders))}")
     if dry_run:
-        print("Mode:      DRY RUN (no emails will be sent)\n")
+        print("Mode:      DRY RUN (no emails will be sent, no log entries written)\n")
     else:
         print()
 
     sent = 0
     failed = 0
+    skipped = 0
 
     for contact in contacts:
         email = contact["email"]
 
-        # Replace {{placeholders}} with values from the CSV row
+        if email.lower() in already_sent:
+            print(f"  Skipping {email} (already sent for '{campaign}')")
+            skipped += 1
+            continue
+
+        # Replace {{placeholders}} in both subject and body with values from the CSV row
         html = html_template
+        personalized_subject = subject
         for key, value in contact.items():
             html = html.replace(f"{{{{{key}}}}}", value or "")
+            personalized_subject = personalized_subject.replace(f"{{{{{key}}}}}", value or "")
 
         if dry_run:
             print(f"  [DRY RUN] Would send to {email}")
@@ -138,7 +195,7 @@ def send_campaign(campaign: str, delay: float = 0.5, dry_run: bool = False) -> N
             params = {
                 "from": FROM_EMAIL,
                 "to": email,
-                "subject": subject,
+                "subject": personalized_subject,
                 "html": html,
                 "headers": {
                     "List-Unsubscribe": f"<mailto:{REPLY_TO or FROM_EMAIL}?subject=Unsubscribe>",
@@ -146,16 +203,20 @@ def send_campaign(campaign: str, delay: float = 0.5, dry_run: bool = False) -> N
             }
             if REPLY_TO:
                 params["reply_to"] = REPLY_TO
+            if bcc:
+                params["bcc"] = bcc
             r = resend.Emails.send(params)
             print(f"  Sent to {email} - id: {r['id']}")
+            log_send(campaign, email, "sent")
             sent += 1
         except Exception as e:
             print(f"  FAILED for {email}: {e}")
+            log_send(campaign, email, "failed", str(e))
             failed += 1
 
         time.sleep(delay)
 
-    print(f"\nDone. Sent: {sent}, Failed: {failed}")
+    print(f"\nDone. Sent: {sent}, Failed: {failed}, Skipped (already sent): {skipped}")
 
 
 if __name__ == "__main__":
@@ -166,10 +227,12 @@ if __name__ == "__main__":
     parser.add_argument("campaign", help="Campaign folder name (e.g. expired-store)")
     parser.add_argument("--delay", type=float, default=0.5, help="Seconds between sends (default: 0.5)")
     parser.add_argument("--dry-run", action="store_true", help="Preview without sending")
+    parser.add_argument("--bcc", default=None, help="BCC every send to this address (hidden from recipient)")
 
     args = parser.parse_args()
     send_campaign(
         campaign=args.campaign,
         delay=args.delay,
         dry_run=args.dry_run,
+        bcc=args.bcc,
     )

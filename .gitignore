@@ -6,3 +6,9 @@ __pycache__/
 # Generated contact lists (fetched from Supabase at send time)
 emails/campaigns/expired-store/contacts.csv
 emails/campaigns/new-dashboard/contacts.csv
+emails/campaigns/restaurant-outreach/contacts.csv
+emails/campaigns/restaurant-outreach/all_places.csv
+
+# Transient run logs
+emails/*.log
+emails/campaigns/*/*.log
